@@ -22,15 +22,16 @@
 ### 待测试 ⏳
 - **OneDrive** - 需要注册 Microsoft 应用
 - **115 网盘** - 需要 115 账号和 Cookie
+- **百度网盘** - 需要百度开发者应用
 - 其他驱动
 
 ## 🚀 快速开始
 
-### 本地开发
+### 一键启动本地开发
 
 ```bash
 # 1. 克隆项目
-git clone <your-repo>
+git clone https://github.com/你的用户名/cf-drive.git
 cd cf-drive
 
 # 2. 安装依赖
@@ -46,9 +47,54 @@ npm run build:frontend
 npm run dev
 ```
 
-访问 `http://localhost:8787`，首次启动会在控制台输出管理员密码。
+访问 `http://localhost:8787`
 
-详细说明请查看 [QUICKSTART.md](./QUICKSTART.md)
+### 首次登录
+
+启动后，控制台会输出默认管理员密码：
+
+```
+[cf-drive] Default admin created. Initial password: xxxxxxxxxxxxxxxx
+```
+
+使用用户名 `admin` 和这个密码登录管理后台。
+
+### 快速测试挂载
+
+#### 1. GitHub Releases（无需认证）
+
+在管理后台创建挂载：
+
+```json
+{
+  "mount_path": "/alist",
+  "driver": "github",
+  "addition": {
+    "owner": "alist-org",
+    "repo": "alist"
+  },
+  "cache_expiration": 3600
+}
+```
+
+访问 `http://localhost:8787/#/alist` 查看 alist 的所有 Release。
+
+#### 2. Cloudflare R2
+
+```json
+{
+  "mount_path": "/r2",
+  "driver": "s3",
+  "addition": {
+    "access_key_id": "your-key",
+    "secret_access_key": "your-secret",
+    "endpoint": "https://your-account.r2.cloudflarestorage.com",
+    "region": "auto",
+    "bucket": "your-bucket"
+  },
+  "cache_expiration": 600
+}
+```
 
 ### 生产部署
 
@@ -62,24 +108,73 @@ wrangler kv:namespace create KVdrive
 # 3. 初始化生产数据库
 wrangler d1 execute cf-drive-db --file=./migrations/001_init.sql
 
-# 4. 设置 JWT 密钥
+# 4. 设置 JWT 密钥（生产环境必须设置）
 wrangler secret put JWT_SECRET
 
 # 5. 部署
 npm run deploy
 ```
 
-详细说明请查看 [LOCAL_DEPLOYMENT.md](./LOCAL_DEPLOYMENT.md)
+详细说明请查看 [LOCAL_DEPLOYMENT.md](./LOCAL_DEPLOYMENT.md) 和 [DRIVER_SETUP_GUIDE.md](./DRIVER_SETUP_GUIDE.md)
 
 ## 📦 支持的驱动
 
-| 驱动 | 说明 | 需要的配置 |
-|------|------|-----------|
-| **OneDrive** | 支持国际版和世纪互联版 | client_id, client_secret, refresh_token |
-| **百度网盘** | 百度个人云存储 | app_key, secret_key, refresh_token |
-| **115 网盘** | 115 Open API | access_token, refresh_token |
-| **S3** | AWS S3 及兼容存储（R2、MinIO 等） | access_key_id, secret_access_key, endpoint, region, bucket |
-| **GitHub** | GitHub Releases 文件托管 | owner, repo, token (可选) |
+| 驱动 | 说明 | 需要的配置 | 测试状态 |
+|------|------|-----------|---------|
+| **GitHub** | GitHub Releases 文件托管 | owner, repo, token (可选) | ✅ 已测试 |
+| **S3** | AWS S3 及兼容存储（R2、MinIO 等） | access_key_id, secret_access_key, endpoint, region, bucket | ✅ 已测试 |
+| **OneDrive** | 支持国际版和世纪互联版 | client_id, client_secret, refresh_token | ⏳ 待测试 |
+| **百度网盘** | 百度个人云存储 | app_key, secret_key, refresh_token | ⏳ 待测试 |
+| **115 网盘** | 115 Open API | access_token, refresh_token | ⏳ 待测试 |
+
+## 🔧 配置示例
+
+### OneDrive
+
+```json
+{
+  "mount_path": "/onedrive",
+  "driver": "onedrive",
+  "addition": {
+    "client_id": "your-client-id",
+    "client_secret": "your-client-secret",
+    "refresh_token": "your-refresh-token",
+    "region": "global",
+    "root_folder_path": "/"
+  },
+  "cache_expiration": 300
+}
+```
+
+### 百度网盘
+
+```json
+{
+  "mount_path": "/baidu",
+  "driver": "baidu",
+  "addition": {
+    "app_key": "your-app-key",
+    "secret_key": "your-secret-key",
+    "refresh_token": "your-refresh-token",
+    "root_folder_path": "/"
+  },
+  "cache_expiration": 300
+}
+```
+
+### 115 网盘
+
+```json
+{
+  "mount_path": "/115",
+  "driver": "open115",
+  "addition": {
+    "access_token": "your-access-token",
+    "refresh_token": "your-refresh-token"
+  },
+  "cache_expiration": 300
+}
+```
 
 ## 🏗️ 架构
 
@@ -109,8 +204,19 @@ cf-drive/
 │   ├── cache/                # KV 缓存管理
 │   ├── db/                   # D1 数据库查询
 │   ├── drivers/              # 网盘驱动实现
+│   │   ├── base.ts           # 驱动基类
+│   │   ├── registry.ts       # 驱动注册表
+│   │   ├── github.ts         # GitHub Releases
+│   │   ├── s3.ts             # S3/R2
+│   │   ├── onedrive.ts       # OneDrive
+│   │   ├── baidu.ts          # 百度网盘
+│   │   └── open115.ts        # 115 网盘
 │   ├── middleware/           # 中间件（认证、CORS）
 │   ├── routes/               # API 路由
+│   │   ├── auth.ts           # 认证路由
+│   │   ├── fs.ts             # 文件系统路由
+│   │   ├── download.ts       # 下载路由
+│   │   └── admin/            # 管理后台路由
 │   ├── utils/                # 工具函数
 │   └── frontend/             # 内嵌前端 HTML
 ├── frontend/                 # 前端源码
@@ -120,75 +226,25 @@ cf-drive/
 └── wrangler.toml             # Cloudflare Workers 配置
 ```
 
-## 🔧 配置示例
-
-### 挂载 OneDrive
-
-```json
-{
-  "mount_path": "/onedrive",
-  "driver": "onedrive",
-  "addition": {
-    "client_id": "your-client-id",
-    "client_secret": "your-client-secret",
-    "refresh_token": "your-refresh-token",
-    "region": "global",
-    "root_folder_path": "/"
-  },
-  "cache_expiration": 300
-}
-```
-
-### 挂载 S3 (Cloudflare R2)
-
-```json
-{
-  "mount_path": "/r2",
-  "driver": "s3",
-  "addition": {
-    "access_key_id": "your-key",
-    "secret_access_key": "your-secret",
-    "endpoint": "https://your-account.r2.cloudflarestorage.com",
-    "region": "auto",
-    "bucket": "your-bucket"
-  },
-  "cache_expiration": 600
-}
-```
-
-### 挂载 GitHub Releases
-
-```json
-{
-  "mount_path": "/releases",
-  "driver": "github",
-  "addition": {
-    "owner": "alist-org",
-    "repo": "alist",
-    "token": "ghp_xxxxxxxxxxxx"
-  },
-  "cache_expiration": 3600
-}
-```
-
-## 🛠️ 开发
-
-### 运行测试
+## 🛠️ 常用命令
 
 ```bash
-npm test
-```
+# 开发
+npm run dev                    # 启动开发服务器
+npm run build                  # 构建项目
+npm run build:frontend         # 仅构建前端
 
-### 查看本地数据库
+# 数据库
+npm run db:init                # 初始化本地数据库
+npm run db:reset               # 重置本地数据库
+npm run db:query "SQL"         # 查询本地数据库
 
-```bash
-npm run db:query "SELECT * FROM mounts;"
-```
+# 部署
+npm run deploy                 # 部署到生产环境
+npm run deploy:db              # 初始化生产数据库
 
-### 重置本地环境
-
-```bash
-npm run db:reset
+# 测试
+npm test                       # 运行测试
 ```
 
 ## 📝 技术栈
@@ -208,40 +264,50 @@ npm run db:reset
 - 支持访客访问控制（guest_access 设置）
 - 管理后台需要 admin 角色
 - 所有加密操作使用 Web Crypto API
-
-## 📄 许可证
-
-MIT
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-## 📚 文档
-
-- [快速启动指南](./QUICKSTART.md)
-- [本地部署指南](./LOCAL_DEPLOYMENT.md)
-- [需求文档](../.kiro/specs/cf-drive/requirements.md)
-- [设计文档](../.kiro/specs/cf-drive/design.md)
-- [任务列表](../.kiro/specs/cf-drive/tasks.md)
+- 生产环境必须设置自定义 JWT_SECRET
 
 ## ⚠️ 注意事项
 
+### 功能限制
 - 本项目仅支持只读操作（浏览 + 下载）
 - 不支持文件上传、复制、移动、删除
 - 不支持 WebDAV、FTP/SFTP
-- Cloudflare Workers 免费版有请求限制（10万次/天）
-- D1 免费版有存储限制（5GB）
-- KV 免费版有读写限制（10万次读/天，1000次写/天）
+
+### Cloudflare 免费版限制
+- Workers: 10万次请求/天
+- D1: 5GB 存储，500万次读/天，10万次写/天
+- KV: 10万次读/天，1000次写/天
+
+### 缓存建议
+- 经常变化的存储（如 R2）：设置较短缓存时间（60-300秒）或使用刷新按钮
+- 不常变化的存储（如 GitHub Releases）：可设置较长缓存时间（3600秒）
 
 ## 🎯 路线图
 
+- [x] 核心功能（文件浏览、下载、管理后台）
+- [x] 5 个驱动（GitHub、S3、OneDrive、百度、115）
+- [x] JWT 认证和权限管理
+- [x] KV 缓存和手动刷新
+- [ ] 测试更多驱动
 - [ ] 添加更多驱动（Google Drive、Dropbox 等）
 - [ ] 支持文件搜索
 - [ ] 支持文件预览（图片、视频）
 - [ ] 支持批量下载（打包为 ZIP）
 - [ ] 添加访问统计
 - [ ] 支持自定义主题
+
+## 📚 文档
+
+- [本地部署指南](./LOCAL_DEPLOYMENT.md)
+- [驱动配置指南](./DRIVER_SETUP_GUIDE.md)
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+## 📄 许可证
+
+MIT
 
 ## 💬 反馈
 
