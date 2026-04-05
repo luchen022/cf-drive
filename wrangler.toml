@@ -1,0 +1,23 @@
+name = "cf-drive"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# 本地开发时的 JWT 密钥（生产环境使用 wrangler secret put JWT_SECRET）
+[vars]
+JWT_SECRET = "local-dev-secret-key-change-in-production-32chars"
+
+# D1 数据库配置
+# 本地开发：wrangler 会自动创建本地 SQLite 文件
+# 生产环境：需要先创建 D1 数据库并更新 database_id
+[[d1_databases]]
+binding = "DB"
+database_name = "cf-drive-db"
+database_id = "local"  # 本地开发使用 "local"，生产环境替换为真实 ID
+
+# KV 命名空间配置
+# 本地开发：wrangler 会自动创建本地 KV 模拟
+# 生产环境：需要先创建 KV 命名空间并更新 id
+[[kv_namespaces]]
+binding = "KVdrive"
+id = "local"  # 本地开发使用 "local"，生产环境替换为真实 ID
