@@ -37,13 +37,16 @@ cd cf-drive
 # 2. 安装依赖
 npm install
 
-# 3. 初始化本地数据库
+# 3. 复制配置文件
+cp wrangler.toml.example wrangler.toml
+
+# 4. 初始化本地数据库
 npm run db:init
 
-# 4. 构建前端
+# 5. 构建前端
 npm run build:frontend
 
-# 5. 启动开发服务器
+# 6. 启动开发服务器
 npm run dev
 ```
 
@@ -115,7 +118,7 @@ wrangler secret put JWT_SECRET
 npm run deploy
 ```
 
-详细说明请查看 [LOCAL_DEPLOYMENT.md](./LOCAL_DEPLOYMENT.md) 和 [DRIVER_SETUP_GUIDE.md](./DRIVER_SETUP_GUIDE.md)
+详细说明请查看 [DEPLOYMENT.md](./DEPLOYMENT.md) 和 [DRIVER_SETUP_GUIDE.md](./DRIVER_SETUP_GUIDE.md)
 
 ## 📦 支持的驱动
 
@@ -298,7 +301,7 @@ npm test                       # 运行测试
 
 ## 📚 文档
 
-- [本地部署指南](./LOCAL_DEPLOYMENT.md)
+- [部署指南](./DEPLOYMENT.md)
 - [驱动配置指南](./DRIVER_SETUP_GUIDE.md)
 
 ## 🤝 贡献

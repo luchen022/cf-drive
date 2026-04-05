@@ -9,6 +9,9 @@ dist/
 .env
 .dev.vars
 
+# Wrangler configuration (use wrangler.toml.example as template)
+wrangler.toml
+
 # Database
 *.db
 *.sqlite
